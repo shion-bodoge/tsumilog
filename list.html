@@ -1314,6 +1314,7 @@ BAN：自分 ${r.myBan||"—"} / 相手 ${r.theirBan||"—"}
     イベント
   ========================= */
   let qTimer = null;
+
   $("q").addEventListener("input", ()=>{
     state.page = 1;
     render();
@@ -1327,15 +1328,17 @@ BAN：自分 ${r.myBan||"—"} / 相手 ${r.theirBan||"—"}
       });
     }, 500);
   });
+
   $("filter").addEventListener("change", ()=>{
-    state.page=1;
-    render(); });
+    state.page = 1;
+    render();
 
     track("list_filter_change", {
       result_filter: $("filter").value,
       type_filter: $("typeFilter").value
     });
   });
+
   $("typeFilter").addEventListener("change", ()=>{
     state.selectedType = $("typeFilter").value;
     localStorage.setItem(TYPE_FILTER_KEY, state.selectedType);

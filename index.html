@@ -1200,7 +1200,7 @@
     track("theme_apply", { source: "manual" });
     applyTheme(theme);
     renderPresetButtons();
-    track("theme_apply", { source: "preset", preset_name: preset.name });
+    track("theme_apply", { source: "manual" });
     closeThemeModal();
   });
 
@@ -1321,15 +1321,6 @@
     localStorage.setItem(DATA_KEY, JSON.stringify(rows));
   }
 
-  track("log_save", {
-    result: entry.result,                 // WIN / LOSE
-    match_type: entry.matchType || "none",
-    has_opponent: !!entry.opponent,
-    has_tag: !!entry.tag,
-    has_pivot: !!entry.pivot,
-    has_next: !!entry.next
-  });
-
   // =========================================================
   // 6) 表示用ユーティリティ
   // =========================================================
@@ -1398,12 +1389,6 @@
     $("detailModal").setAttribute("aria-hidden", "false");
   }
 
-  track("log_open_detail", {
-    source: "recent",
-    result: r.result,
-    match_type: r.matchType || "none"
-  });
-
   function closeDetail(){
     $("detailModal").style.display = "none";
     $("detailModal").setAttribute("aria-hidden", "true");
@@ -1418,6 +1403,13 @@
     if(!currentDetailId) return;
     const rows = loadRows();
     const r = rows.find(x => x.id === currentDetailId);
+
+    track("log_copy", {
+      source: "detail",
+      result: r.result,
+      match_type: r.matchType || "none"
+    });
+
     if(!r) return;
 
     const res = r.result==="WIN" ? "勝ち" : "負け";
@@ -1437,12 +1429,6 @@
 
     const copyRes = await copyText(text);
     if(copyRes.ok) alert("この記録をコピーしたよ！");
-  });
-
-  track("log_copy", {
-    source: "detail",
-    result: r.result,
-    match_type: r.matchType || "none"
   });
 
   // =========================================================
@@ -1578,6 +1564,12 @@
       el.addEventListener("click", ()=>{
         const id = Number(el.getAttribute("data-id"));
         openDetailById(id);
+
+        track("log_open_detail", {
+          source: "recent",
+          result: r.result,
+          match_type: r.matchType || "none"
+        });
       });
     });
   }
@@ -1684,6 +1676,15 @@
     const rows = loadRows();
     rows.push(entry);
     saveRows(rows);
+
+    track("log_save", {
+      result: entry.result,                 // WIN / LOSE
+      match_type: entry.matchType || "none",
+      has_opponent: !!entry.opponent,
+      has_tag: !!entry.tag,
+      has_pivot: !!entry.pivot,
+      has_next: !!entry.next
+    });
 
     // 辞書候補も更新
     renderWordDatalist();
