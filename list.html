@@ -287,7 +287,6 @@
         <option value="free">区分：フリプ</option>
         <option value="rank">区分：ランク</option>
       </select>
-      <button class="ghost" type="button" id="copyLatest">最新をコピー</button>
     </div>
 
     <div class="pager" id="pager"></div>
@@ -327,7 +326,6 @@
           <button class="ghost" type="button" id="prevBtn">← 前へ</button>
           <button class="ghost" type="button" id="nextBtn">次へ →</button>
         </div>
-        <button class="ghost" type="button" id="detailCopyBtn">コピー</button>
         <button class="ghost" type="button" id="detailEditBtn">編集</button>
         <button class="dangerBtn" type="button" id="detailDeleteBtn">削除</button>
         <button class="ghost" type="button" id="closeDetail">閉じる</button>
@@ -1029,31 +1027,6 @@
     openDetailByIndex(currentDetailIndex + 1);
   });
 
-  // コピー（詳細）
-  $("detailCopyBtn").addEventListener("click", async ()=>{
-    if(currentDetailIndex < 0) return;
-    const r = currentFiltered[currentDetailIndex];
-
-    const res = r.result==="WIN" ? "勝ち" : "負け";
-    const myTeam = pairName(r.my1, r.my2);
-    const theirTeam = pairName(r.their1, r.their2);
-    const mt = matchTypeText(r.matchType);
-
-    const text =
-`【${r.ts}】${myTeam} vs ${theirTeam}（${res}）
-区分：${mt}
-先後：${r.turn || "—"}
-タグ：${r.tag ? "#" + r.tag : "—"}
-BAN：自分 ${r.myBan||"—"} / 相手 ${r.theirBan||"—"}
-反省：${r.pivot || "—"}
-改善：${r.next || "—"}`;
-
-    const copyRes = await copyText(text);
-    if(copyRes.ok){
-      alert("この記録をコピーしたよ！");
-    }
-  });
-
   // 編集トグル（編集→表示に戻る時に未保存確認）
   $("detailEditBtn").addEventListener("click", ()=>{
     const isEdit = isEditMode();
@@ -1349,34 +1322,6 @@ BAN：自分 ${r.myBan||"—"} / 相手 ${r.theirBan||"—"}
       result_filter: $("filter").value,
       type_filter: state.selectedType
     });
-  });
-
-  // 最新をコピー（補助）
-  $("copyLatest").addEventListener("click", async ()=>{
-    const rows = loadRows();
-    if(rows.length===0) return;
-
-    const newest = rows.reduce((best,r)=> best.id < r.id ? r : best, rows[0]);
-    const res = newest.result==="WIN" ? "勝ち" : "負け";
-    const myTeam = pairName(newest.my1,newest.my2);
-    const theirTeam = pairName(newest.their1,newest.their2);
-    const mt = matchTypeText(newest.matchType);
-
-    const text =
-`【${newest.ts}】${myTeam} vs ${theirTeam}（${res}）
-区分：${mt}
-先後：${newest.turn || "—"}
-タグ：${newest.tag ? "#" + newest.tag : "—"}
-BAN：自分 ${newest.myBan||"—"} / 相手 ${newest.theirBan||"—"}
-反省：${newest.pivot || "—"}
-改善：${newest.next || "—"}`;
-
-    try{
-      await navigator.clipboard.writeText(text);
-      alert("最新の記録をコピーしたよ！");
-    }catch{
-      alert("コピーに失敗したので、ブラウザの権限を確認してね");
-    }
   });
 
   $("typeFilter").value = state.selectedType;
