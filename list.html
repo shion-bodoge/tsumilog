@@ -280,6 +280,7 @@
   <div class="rightHead">
     <a class="chip" href="index.html" style="text-decoration:none;color:inherit;">← 入力へ</a>
     <button class="chip chipBtn" id="openHelp" type="button">❓ ヘルプ</button>
+    <button class="chip chipBtn" id="openData" type="button">📦 エクスポート/インポート</button>
     <div class="chip" title="サーバー送信はありません。ブラウザ内に保存されます。">🔒 ローカル保存</div>
     <div class="chip" id="countChip">0件</div>
   </div>
@@ -461,6 +462,49 @@
   </div>
 </div>
 
+<!-- =========================
+  データモーダル（エクスポート / インポート）
+  ※ list.html（管理側）にだけ置く
+========================= -->
+<div id="dataModal" class="modal" aria-hidden="true">
+  <div class="card inner">
+    <div class="modalTop">
+      <h3 class="modalTitle">📦 データ（エクスポート / インポート）</h3>
+      <button class="ghost" type="button" id="closeData">閉じる</button>
+    </div>
+
+    <div class="helpBox">
+      <h4 style="margin:0 0 6px;">エクスポート（統一JSON）</h4>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="ghost" type="button" id="exportDataBtn">📤 ダウンロード</button>
+        <span class="mini">※ localStorageの記録を統一JSONに変換します</span>
+      </div>
+    </div>
+
+    <div class="helpBox" style="margin-top:10px;">
+      <h4 style="margin:0 0 6px;">インポート（統一JSON / B方式）</h4>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input type="file" id="importFile" accept="application/json,.json" />
+        <button class="ghost" type="button" id="importRunBtn">📥 読み込み</button>
+      </div>
+
+      <div class="mini" id="importSummary" style="margin-top:10px;"></div>
+
+      <!-- 重複候補（保留）表示 -->
+      <div id="dupArea" style="margin-top:10px;"></div>
+
+      <div id="applyArea" style="display:none; margin-top:10px; justify-content:flex-end; gap:8px;">
+        <button class="primary" type="button" id="applyResolvedBtn">確定して保存</button>
+      </div>
+
+      <div class="mini" style="margin-top:8px;">
+        ※重複候補は保留されます。「既存を残す / インポートを採用 / 両方残す」を選んでから確定します。
+      </div>
+    </div>
+  </div>
+</div>
+
       <!-- メガミ/BAN 共通のユーザー辞書（候補） -->
       <datalist id="wordList"></datalist>
 
@@ -471,8 +515,8 @@
 (() => {
   const $ = (id) => document.getElementById(id);
 
-//ここでバージョンを更新する
-  const APP_VERSION = "1.0.0";
+  //バージョン更新
+  const APP_VERSION = "1.1.0";
 
   function track(name, params={}){
     // gtag 未ロードでも壊れないように
@@ -619,6 +663,391 @@
   const DATA_KEY  = "furuyoni_match_logs_v1";
   const THEME_KEY = "furuyoni_theme_v1";
   const PER_PAGE  = 30;
+
+  // =========================================================
+  // 12) エクスポート / インポート（統一JSON）
+  // =========================================================
+  const DEFAULT_VISIBILITY = "public"; // 今はUIが無いので固定
+
+  function newUid(){
+    if(crypto?.randomUUID) return crypto.randomUUID();
+    return "uid_" + Date.now() + "_" + Math.random().toString(36).slice(2,10);
+  }
+
+  // 既存データに uid が無ければ付与（永続化）
+  function ensureUids(){
+    const rows = loadRows();
+    let changed = false;
+    for(const r of rows){
+      if(!r.uid){
+        r.uid = newUid();
+        changed = true;
+      }
+    }
+    if(changed) saveRows(rows);
+    return rows;
+  }
+
+  // turn: 内部（先手/後手） ⇄ 統一（first/second）
+  function toUnifiedTurn(v){
+    if(v === "先手") return "first";
+    if(v === "後手") return "second";
+    return null;
+  }
+  function fromUnifiedTurn(v){
+    if(v === "first") return "先手";
+    if(v === "second") return "後手";
+    return "";
+  }
+
+  // ts: "YYYY-MM-DD HH:mm" → created_at: "YYYY-MM-DDTHH:mm:00+09:00"
+  function toIsoFromTs(ts){
+    if(!ts) return null;
+    const m = ts.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/);
+    if(!m) return null;
+    return `${m[1]}T${m[2]}:00+09:00`;
+  }
+  function toDateFromTs(ts){
+    const d = (ts || "").slice(0,10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
+  }
+
+  // 内部 row → 統一JSON
+  function rowToUnified(r){
+    return {
+      id: r.uid || newUid(),
+      created_at: toIsoFromTs(r.ts) || (new Date()).toISOString(),
+      date: toDateFromTs(r.ts),
+
+      result: r.result, // WIN/LOSE
+
+      // ここは今の運用に合わせて「文字列のまま」出します
+      my1: r.my1 || null,
+      my2: r.my2 || null,
+      their1: r.their1 || null,
+      their2: r.their2 || null,
+
+      my_ban: r.myBan || null,
+      their_ban: r.theirBan || null,
+
+      match_type: r.matchType || null, // tournament/free/rank
+      turn: toUnifiedTurn(r.turn),
+
+      tag: r.tag || null,
+      pivot: r.pivot || null,
+      next: r.next || null,
+
+      visibility: DEFAULT_VISIBILITY,
+    };
+  }
+
+  // 統一JSON → 内部 row
+  function unifiedToRow(u){
+    // created_at があれば ts に寄せる
+    let ts = null;
+    if(typeof u.created_at === "string"){
+      const v = u.created_at.replace("Z","+00:00");
+      // "YYYY-MM-DDTHH:mm" までを "YYYY-MM-DD HH:mm" に
+      const head = v.slice(0,16);
+      const cand = head.replace("T"," ");
+      if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(cand)) ts = cand;
+    }
+    if(!ts){
+      ts = (u.date || todayKey()) + " 00:00";
+    }
+
+    // 既存UIのソート（b.id-a.id）維持のため、数値idは別で作る
+    return {
+      id: Date.now() + Math.floor(Math.random()*1000),
+      uid: String(u.id || newUid()),
+
+      ts,
+      opponent: "",
+
+      result: u.result === "WIN" ? "WIN" : "LOSE",
+
+      my1: u.my1 || "",
+      my2: u.my2 || "",
+      their1: u.their1 || "",
+      their2: u.their2 || "",
+      myBan: u.my_ban || "",
+      theirBan: u.their_ban || "",
+
+      turn: fromUnifiedTurn(u.turn),
+      matchType: u.match_type || "",
+
+      tag: u.tag || "",
+      pivot: u.pivot || "",
+      next: u.next || "",
+    };
+  }
+
+  // 重複候補判定用：強め一致（誤爆しにくい）
+  function norm(s){ return String(s||"").trim().normalize("NFKC"); }
+  function sortPair(a,b){
+    const x = norm(a), y = norm(b);
+    return [x,y].sort((p,q)=>p.localeCompare(q,"ja"));
+  }
+  function signatureFromRow(r){
+    const date = (r.ts || "").slice(0,10);
+    const [myA,myB] = sortPair(r.my1, r.my2);
+    const [thA,thB] = sortPair(r.their1, r.their2);
+    return [
+      date,
+      r.result || "",
+      r.matchType || "",
+      toUnifiedTurn(r.turn) || "",
+      myA,myB,thA,thB
+    ].join("|");
+  }
+  function signatureFromUnified(u){
+    const date = norm(u.date);
+    const [myA,myB] = sortPair(u.my1, u.my2);
+    const [thA,thB] = sortPair(u.their1, u.their2);
+    return [
+      date,
+      u.result || "",
+      u.match_type || "",
+      (u.turn || ""),
+      myA,myB,thA,thB
+    ].join("|");
+  }
+
+  // import state
+  let pendingDups = [];     // { existingIndex, existingRow, importedRow, choice }
+  let pendingAdds = [];     // row[]
+  let pendingUpdates = [];  // { index, row }[]
+  let lastImportStats = null;
+
+  function classifyImport(unifiedList){
+    const rows = ensureUids();
+
+    const uidToIndex = new Map();
+    rows.forEach((r,i)=> uidToIndex.set(String(r.uid), i));
+
+    const sigToIndices = new Map();
+    rows.forEach((r,i)=>{
+      const sig = signatureFromRow(r);
+      if(!sigToIndices.has(sig)) sigToIndices.set(sig, []);
+      sigToIndices.get(sig).push(i);
+    });
+
+    pendingDups = [];
+    pendingAdds = [];
+    pendingUpdates = [];
+
+    for(const u of unifiedList){
+      const uid = String(u?.id || "");
+      const sig = signatureFromUnified(u);
+
+      // 1) 同じuid → 更新（即上書き候補）
+      if(uid && uidToIndex.has(uid)){
+        const idx = uidToIndex.get(uid);
+        const newRow = unifiedToRow(u);
+        // UI用の数値idは保持
+        newRow.id = rows[idx].id;
+        // uidも保持（同じ）
+        newRow.uid = rows[idx].uid;
+        pendingUpdates.push({ index: idx, row: { ...rows[idx], ...newRow }});
+        continue;
+      }
+
+      // 2) uidは違うが署名一致 → 重複候補として保留
+      const hit = sigToIndices.get(sig);
+      if(hit && hit.length){
+        const existingIndex = hit[0];
+        const importedRow = unifiedToRow(u);
+
+        pendingDups.push({
+          existingIndex,
+          existingRow: rows[existingIndex],
+          importedRow,
+          // 初期は安全側
+          choice: "keep_existing" // keep_existing / take_import / keep_both
+        });
+        continue;
+      }
+
+      // 3) それ以外 → 追加
+      pendingAdds.push(unifiedToRow(u));
+    }
+
+    lastImportStats = {
+      total: unifiedList.length,
+      adds: pendingAdds.length,
+      updates: pendingUpdates.length,
+      dups: pendingDups.length,
+    };
+  }
+
+  function rowLabel(r){
+    const date = (r.ts||"").slice(0,10);
+    const res = r.result === "WIN" ? "勝ち" : "負け";
+    const mt = matchTypeText(r.matchType);
+    const turn = r.turn || "—";
+    return `${date} / ${res} / ${mt} / ${turn}\n${pairName(r.my1,r.my2)} vs ${pairName(r.their1,r.their2)}`;
+  }
+
+  function renderDupResolver(){
+    const sum = $("importSummary");
+    const dupArea = $("dupArea");
+    const applyArea = $("applyArea");
+
+    if(!lastImportStats){
+      sum.textContent = "";
+      dupArea.innerHTML = "";
+      applyArea.style.display = "none";
+      return;
+    }
+
+    sum.textContent =
+      `読み込み：${lastImportStats.total}件 / 追加：${lastImportStats.adds}件 / 更新：${lastImportStats.updates}件 / 重複候補：${lastImportStats.dups}件`;
+
+    applyArea.style.display = "flex";
+
+    if(pendingDups.length === 0){
+      dupArea.innerHTML = `<div class="mini">重複候補はありません。</div>`;
+      return;
+    }
+
+    dupArea.innerHTML = pendingDups.map((d,i)=>{
+      const a = rowLabel(d.existingRow);
+      const b = rowLabel(d.importedRow);
+      return `
+        <div style="border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:12px;background:#fff;margin-top:10px;">
+          <div class="cap">重複候補 ${i+1}</div>
+
+          <div class="mini">【既存】</div>
+          <pre style="margin:6px 0 10px; white-space:pre-wrap;">${escapeHtml(a)}</pre>
+
+          <div class="mini">【インポート】</div>
+          <pre style="margin:6px 0 10px; white-space:pre-wrap;">${escapeHtml(b)}</pre>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <label class="mini"><input type="radio" name="dup_${i}" value="keep_existing" ${d.choice==="keep_existing"?"checked":""}> 既存を残す</label>
+            <label class="mini"><input type="radio" name="dup_${i}" value="take_import" ${d.choice==="take_import"?"checked":""}> インポートを採用（既存置換）</label>
+            <label class="mini"><input type="radio" name="dup_${i}" value="keep_both" ${d.choice==="keep_both"?"checked":""}> 両方残す</label>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    pendingDups.forEach((d,i)=>{
+      dupArea.querySelectorAll(`input[name="dup_${i}"]`).forEach(el=>{
+        el.addEventListener("change", ()=>{ d.choice = el.value; });
+      });
+    });
+  }
+
+  function applyImportResolved(){
+    const rows = ensureUids();
+
+    // 1) 更新（uid一致）
+    for(const u of pendingUpdates){
+      rows[u.index] = u.row;
+    }
+
+    // 2) 重複候補（B方式：保留→選択）
+    for(const d of pendingDups){
+      if(d.choice === "keep_existing"){
+        continue;
+      }
+      if(d.choice === "take_import"){
+        // 既存の数値idとuidを保持（同一試合として“身元”を変えない）
+        const keepId  = rows[d.existingIndex].id;
+        const keepUid = rows[d.existingIndex].uid;
+
+        const replaced = { ...rows[d.existingIndex], ...d.importedRow };
+        replaced.id = keepId;
+        replaced.uid = keepUid;
+
+        rows[d.existingIndex] = replaced;
+        continue;
+      }
+      if(d.choice === "keep_both"){
+        rows.push(d.importedRow);
+        continue;
+      }
+    }
+
+    // 3) 追加
+    for(const a of pendingAdds){
+      rows.push(a);
+    }
+
+    saveRows(rows);
+
+    // cleanup
+    pendingDups = [];
+    pendingAdds = [];
+    pendingUpdates = [];
+    lastImportStats = null;
+
+    render();
+    alert("インポートを確定しました！");
+  }
+
+  // データモーダル open/close
+  function openData(){
+    $("dataModal").style.display = "flex";
+    $("dataModal").setAttribute("aria-hidden","false");
+    $("importSummary").textContent = "";
+    $("dupArea").innerHTML = "";
+    $("applyArea").style.display = "none";
+    // file input リセット
+    const f = $("importFile");
+    if(f) f.value = "";
+  }
+  function closeData(){
+    $("dataModal").style.display = "none";
+    $("dataModal").setAttribute("aria-hidden","true");
+  }
+  $("openData").addEventListener("click", openData);
+  $("closeData").addEventListener("click", closeData);
+
+  // エクスポート：統一JSON（配列）をダウンロード
+  $("exportDataBtn").addEventListener("click", ()=>{
+    const rows = ensureUids();
+    const unified = rows.map(rowToUnified);
+    const blob = new Blob([JSON.stringify(unified, null, 2)], { type:"application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `tsumilog_export_${todayKey()}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // インポート：分類→（重複候補は保留表示）→確定
+  $("importRunBtn").addEventListener("click", async ()=>{
+    const file = $("importFile")?.files?.[0];
+    if(!file){
+      alert("JSONファイルを選んでね");
+      return;
+    }
+
+    const text = await file.text();
+    let data;
+    try{ data = JSON.parse(text); }
+    catch{ alert("JSONとして読み取れませんでした"); return; }
+
+    // 配列 or {items:[...]} 両対応
+    const list = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : null);
+    if(!list){
+      alert("形式が違います（統一JSONの配列を入れてね）");
+      return;
+    }
+
+    classifyImport(list);
+    renderDupResolver();
+
+    // 確定ボタン表示
+    $("applyArea").style.display = "flex";
+  });
+
+  $("applyResolvedBtn").addEventListener("click", ()=>{
+    applyImportResolved();
+    closeData();
+  });
 
   // =========================================================
   // 1.5) ユーザー辞書（メガミ/BAN 統一）
@@ -1351,13 +1780,12 @@
 
   $("typeFilter").value = state.selectedType;
 
-  const vb = $("versionBadge");
-  if(vb) vb.textContent = `ver${APP_VERSION}`;
+    const vb = $("versionBadge");
+    if(vb) vb.textContent = `v${APP_VERSION}`;
 
   // 初期化
   render();
 })();
 </script>
 </body>
-
 </html>
