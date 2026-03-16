@@ -2,35 +2,15 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
   <url>
-    <loc>https://shion-bodoge.github.io/shion-bodoge-room/</loc>
+    <loc>https://shion-bodoge.github.io/tsumilog/</loc>
   </url>
 
   <url>
-    <loc>https://shion-bodoge.github.io/shion-bodoge-room/index.html</loc>
+    <loc>https://shion-bodoge.github.io/tsumilog/index.html</loc>
   </url>
 
   <url>
-    <loc>https://shion-bodoge.github.io/shion-bodoge-room/pages/service.html</loc>
-  </url>
-
-  <url>
-    <loc>https://shion-bodoge.github.io/shion-bodoge-room/pages/oyasumi.html</loc>
-  </url>
-
-  <url>
-    <loc>https://shion-bodoge.github.io/shion-bodoge-room/pages/memos.html</loc>
-  </url>
-
-  <url>
-    <loc>https://shion-bodoge.github.io/shion-bodoge-room/pages/omoitsuki.html</loc>
-  </url>
-
-  <url>
-    <loc>https://shion-bodoge.github.io/shion-bodoge-room/pages/public.html</loc>
-  </url>
-
-  <url>
-    <loc>https://shion-bodoge.github.io/shion-bodoge-room/pages/tsumilog.html</loc>
+    <loc>https://shion-bodoge.github.io/tsumilog/list.html</loc>
   </url>
 
 </urlset>

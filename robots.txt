@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://shion-bodoge.github.io/shion-bodoge-room/sitemap.xml
+Sitemap: https://shion-bodoge.github.io/tsumilog/sitemap.xml
