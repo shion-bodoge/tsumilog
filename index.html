@@ -5,6 +5,22 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>つみログ（入力）</title>
 
+<meta name="description" content="つみログは、対戦記録を簡単に残して振り返りに活かせるWebツールです。入力しやすく、一覧で傾向を見返せます。">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://shion-bodoge.github.io/tsumilog/">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="つみログ | 対戦記録と振り返りを簡単に残せるツール">
+<meta property="og:description" content="対戦記録を簡単に残して、あとから振り返りやすくするWebツールです。">
+<meta property="og:url" content="https://shion-bodoge.github.io/tsumilog/">
+<meta property="og:site_name" content="つみログ">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="つみログ | 対戦記録と振り返りを簡単に残せるツール">
+<meta name="twitter:description" content="対戦記録を簡単に残して、あとから振り返りやすくするWebツールです。">
+
+<meta name="google-site-verification" content="2Y1fIvg4bCvN2PG0elgXj3U5UyP6LJk-cAJxbIn7Dhs" />
+
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-YY44S858BX"></script>
 <script>
@@ -131,6 +147,7 @@
     background:#fff;
     color:var(--text);
     outline:none;
+    font-size:16px;
   }
   textarea{
     min-height:140px;
@@ -381,12 +398,57 @@
   .versionBadge:hover{
     opacity: 1;
   }
+
+  .resultWin{
+    color: var(--ok);
+    font-weight: 900;
+  }
+  .resultLose{
+    color: var(--danger);
+    font-weight: 900;
+  }
+
+  .suggestWrap{
+    position:relative;
+  }
+
+  .suggestBox{
+    display:none;
+    position:absolute;
+    left:0;
+    right:0;
+    top:calc(100% + 6px);
+    z-index:50;
+    background:#fff;
+    border:1px solid rgba(0,0,0,.12);
+    border-radius:12px;
+    box-shadow:0 10px 24px rgba(0,0,0,.08);
+    max-height:220px;
+    overflow:auto;
+  }
+
+  .suggestItem{
+    padding:10px 12px;
+    font-size:16px;
+    cursor:pointer;
+    border-bottom:1px solid rgba(0,0,0,.06);
+  }
+
+  .suggestItem:last-child{
+    border-bottom:0;
+  }
+
+  .suggestItem:active,
+  .suggestItem:hover{
+    background:rgba(255,122,47,.08);
+  }
 </style>
 </head>
 
 <body>
 <header>
   <div class="title">🌱 つみログ</div>
+
   <div class="rightHead">
     <!-- 一覧ページへ -->
     <a class="chip" href="list.html" style="text-decoration:none;color:inherit;">一覧を見る →</a>
@@ -403,6 +465,9 @@
     <div class="chip" id="countChip">0件</div>
   </div>
 </header>
+
+<p style="padding:0 25px 2px;max-width:1100px;margin:0 auto;display:flex;gap:12px;align-items:flex-end;justify-content:space-between;">つみログは、対戦記録を簡単に残して振り返りや分析に活かすためのWebツールです。</p>
+<p style="padding:0 25px 8px;;max-width:1100px;margin:0 auto;display:flex;gap:12px;align-items:flex-end;justify-content:space-between;">入力しやすさと一覧の見やすさを重視して作っています。</p>
 
 <!-- 入力ゾーン -->
 <div class="wrap">
@@ -429,25 +494,49 @@
 
         <div class="row">
           <label>自分メガミ（使用）</label>
-          <input id="my1" list="wordList" placeholder="例：ユリナ" required />
-          <input id="my2" list="wordList" placeholder="例：サイネ" required />
-        </div>
+
+          <div class="suggestWrap">
+            <input id="my1" list="wordList" placeholder="例：ユリナ" required />
+            <div class="suggestBox" id="my1Suggest"></div>
+          </div>
+
+          <div class="suggestWrap">
+            <input id="my2" list="wordList" placeholder="例：サイネ" required />
+            <div class="suggestBox" id="my2Suggest"></div>
+         </div>
+       </div>
 
         <div class="row">
           <label>相手メガミ（使用）</label>
-          <input id="their1" list="wordList" placeholder="例：ヒミカ" required />
-          <input id="their2" list="wordList" placeholder="例：トコヨ" required />
-        </div>
+
+          <div class="suggestWrap">
+            <input id="their1" list="wordList" placeholder="例：ヒミカ" required />
+            <div class="suggestBox" id="their1Suggest"></div>
+          </div>
+
+          <div class="suggestWrap">
+            <input id="their2" list="wordList" placeholder="例：トコヨ" required />
+            <div class="suggestBox" id="their2Suggest"></div>
+         </div>
+       </div>
 
         <div class="row">
           <label>BANされたメガミ</label>
-          <input id="myBan" list="wordList" placeholder="例：オボロ" />
-        </div>
+
+          <div class="suggestWrap">
+            <input id="myBan" list="wordList" placeholder="例：オボロ" required />
+            <div class="suggestBox" id="myBanSuggest"></div>
+          </div>
+       </div>
 
         <div class="row">
           <label>BANしたメガミ</label>
-          <input id="theirBan" list="wordList" placeholder="例：ユキヒ" />
-        </div>
+
+          <div class="suggestWrap">
+            <input id="theirBan" list="wordList" placeholder="例：ユキヒ" required />
+            <div class="suggestBox" id="theirBanSuggest"></div>
+          </div>
+       </div>
 
         <div class="row">
           <label>先後（任意）</label>
@@ -761,7 +850,7 @@
   const $ = (id) => document.getElementById(id);
   
   //バージョン更新
-  const APP_VERSION = "1.2.0";
+  const APP_VERSION = "1.3.0";
 
   function track(name, params={}){
     // gtag 未ロードでも壊れないように
@@ -917,26 +1006,49 @@
   // =========================================================
   const DICT_KEY = "tsumilog_user_dict_v1";
 
+  function normText(s){
+    return String(s || "").trim().replace(/\s+/g, " ").normalize("NFKC");
+  }
+
   function loadDict(){
     try{
       const arr = JSON.parse(localStorage.getItem(DICT_KEY) || "[]");
-      return Array.isArray(arr) ? arr : [];
+      if(!Array.isArray(arr)) return [];
+
+      return arr
+        .map((x, i) => ({
+          id: Number(x.id) || (i + 1),
+          key: normText(x.key || x.label || ""),
+          label: String(x.label || "").trim(),
+          order: Number.isFinite(Number(x.order)) ? Number(x.order) : i
+        }))
+        .filter(x => x.label && x.key)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     }catch{
       return [];
     }
   }
+
   function saveDict(list){
-    localStorage.setItem(DICT_KEY, JSON.stringify(list));
+    const normalized = list
+      .map((x, i) => ({
+        id: Number(x.id) || (i + 1),
+        key: normText(x.label || x.key || ""),
+        label: String(x.label || "").trim(),
+        order: i
+      }))
+      .filter(x => x.label && x.key);
+
+    localStorage.setItem(DICT_KEY, JSON.stringify(normalized));
   }
-  function normText(s){
-    return String(s||"").trim().replace(/\s+/g," ").normalize("NFKC");
-  }
+
   function nextDictId(dict){
-    const max = dict.reduce((m,x)=>Math.max(m, Number(x.id)||0), 0);
+    const max = dict.reduce((m, x) => Math.max(m, Number(x.id) || 0), 0);
     return max + 1;
   }
+
   function upsertDict(text){
-    const label = String(text||"").trim();
+    const label = String(text || "").trim();
     const key = normText(label);
     if(!key) return null;
 
@@ -944,21 +1056,111 @@
     const hit = dict.find(x => x.key === key);
     if(hit) return hit;
 
-    const item = { id: nextDictId(dict), key, label };
+    const item = {
+      id: nextDictId(dict),
+      key,
+      label,
+      order: dict.length
+    };
+
     dict.push(item);
     saveDict(dict);
     return item;
   }
+
+  function moveDictItem(fromIndex, toIndex){
+    const dict = loadDict();
+
+    if(
+      fromIndex < 0 || fromIndex >= dict.length ||
+      toIndex < 0 || toIndex >= dict.length ||
+      fromIndex === toIndex
+    ){
+      return;
+    }
+
+    const [item] = dict.splice(fromIndex, 1);
+    dict.splice(toIndex, 0, item);
+    saveDict(dict);
+  }
+
   function renderWordDatalist(){
     const dl = document.getElementById("wordList");
     if(!dl) return;
 
     const dict = loadDict();
     dl.innerHTML = dict
-      .slice()
-      .sort((a,b)=>String(a.label).localeCompare(String(b.label),"ja"))
       .map(x => `<option value="${escapeHtml(x.label)}"></option>`)
       .join("");
+  }
+
+  function getDictLabels(){
+    return loadDict().map(x => x.label);
+  }
+
+  function bindSuggest(inputId, boxId){
+    const input = $(inputId);
+    const box = $(boxId);
+    if(!input || !box) return;
+
+    const useCustomSuggest = window.matchMedia("(hover: none), (pointer: coarse), (max-width: 820px)").matches;
+
+    // スマホではネイティブ datalist を無効化して二重表示を防ぐ
+    if(useCustomSuggest){
+      if(input.hasAttribute("list")){
+        input.dataset.originalList = input.getAttribute("list") || "";
+        input.removeAttribute("list");
+      }
+    }else{
+      // PCでは元に戻す
+      if(!input.hasAttribute("list") && input.dataset.originalList){
+        input.setAttribute("list", input.dataset.originalList);
+      }
+      box.style.display = "none";
+      box.innerHTML = "";
+      return;
+    }
+
+    function closeBox(){
+      box.style.display = "none";
+      box.innerHTML = "";
+    }
+
+    function openBox(){
+      const q = input.value.trim();
+      const labels = getDictLabels().filter(label => {
+        if(!q) return true;
+        return label.includes(q);
+      });
+
+      if(labels.length === 0){
+        closeBox();
+        return;
+      }
+
+      box.innerHTML = labels.map(label => `
+        <div class="suggestItem" data-value="${escapeHtml(label)}">${escapeHtml(label)}</div>
+      `).join("");
+
+      box.style.display = "block";
+
+      box.querySelectorAll(".suggestItem").forEach(item => {
+        item.addEventListener("click", () => {
+          input.value = item.getAttribute("data-value") || "";
+          closeBox();
+          input.focus();
+        });
+      });
+    }
+
+    input.addEventListener("focus", openBox);
+    input.addEventListener("input", openBox);
+    input.addEventListener("click", openBox);
+
+    document.addEventListener("click", (e) => {
+      if(e.target === input || box.contains(e.target)) return;
+      closeBox();
+    });
   }
 
   // =========================================================
@@ -1554,7 +1756,7 @@
         <tr>
           <td style="width:92px">
             <span class="mini">${escapeHtml((r.ts||"").slice(0,10))}</span><br>
-            <b>${mark} ${res}</b>
+            <b class="${r.result==="WIN" ? "resultWin" : "resultLose"}">${mark} ${res}</b>
           </td>
           <td>
             <span class="linklike" data-id="${r.id}">${escapeHtml(myTeam)} vs ${escapeHtml(theirTeam)}</span>
@@ -1741,6 +1943,13 @@
   });
 
   // 初期化
+  bindSuggest("my1", "my1Suggest");
+  bindSuggest("my2", "my2Suggest");
+  bindSuggest("their1", "their1Suggest");
+  bindSuggest("their2", "their2Suggest");
+  bindSuggest("myBan", "myBanSuggest");
+  bindSuggest("theirBan", "theirBanSuggest");
+
   refresh();
   setInterval(()=>{ $("nowChip").textContent = nowStr(); }, 10*1000);
 })();
