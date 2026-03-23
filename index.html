@@ -524,7 +524,7 @@
           <label>BANされたメガミ</label>
 
           <div class="suggestWrap">
-            <input id="myBan" list="wordList" placeholder="例：オボロ" required />
+            <input id="myBan" list="wordList" placeholder="例：オボロ" />
             <div class="suggestBox" id="myBanSuggest"></div>
           </div>
        </div>
@@ -533,7 +533,7 @@
           <label>BANしたメガミ</label>
 
           <div class="suggestWrap">
-            <input id="theirBan" list="wordList" placeholder="例：ユキヒ" required />
+            <input id="theirBan" list="wordList" placeholder="例：ユキヒ" />
             <div class="suggestBox" id="theirBanSuggest"></div>
           </div>
        </div>
@@ -850,7 +850,7 @@
   const $ = (id) => document.getElementById(id);
   
   //バージョン更新
-  const APP_VERSION = "1.3.0";
+  const APP_VERSION = "1.4.0";
 
   function track(name, params={}){
     // gtag 未ロードでも壊れないように
