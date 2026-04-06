@@ -1621,6 +1621,10 @@
     const d = new Date();
     return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
   }
+  function currentTimeStr(){
+    const d = new Date();
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  }
   function compareRowsNewest(a,b){
     const ta = String(a.ts || "");
     const tb = String(b.ts || "");
